@@ -1,0 +1,10 @@
+#!/bin/bash
+
+./clean
+
+python3 setup.py sdist bdist_wheel
+
+pip3 uninstall -y pysbl
+pip3 install --user dist/*.whl
+
+#python3 tests/__init__.py

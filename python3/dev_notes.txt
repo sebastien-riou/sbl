@@ -1,0 +1,20 @@
+Python dev loop:
+python3 pysbl/__init__.py
+
+Python packaging:
+python3 setup.py sdist bdist_wheel
+
+install package:
+sudo -H pip3 install dist/pysbl-....whl
+or
+pip3 install --user dist/pysbl-....whl
+
+remove package (useful to update without ticking each time the version during dev/tests)
+pip3 uninstall pysbl
+
+
+
+package testing loop:
+./package
+
+python3 tests/__init__.py <args>
