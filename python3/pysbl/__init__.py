@@ -36,7 +36,7 @@ class SBL(object):
         return int.from_bytes(b, byteorder)
 
     @staticmethod
-    def ba(hexstr_or_int):
+    def ba(hexstr_or_int,width=-1):
         """Extract hex numbers from a string and returns them as a bytearray
         It also handles int and list of int as argument
         If it cannot convert, it raises ValueError
@@ -58,7 +58,7 @@ class SBL(object):
         except:
             #seems arg is not a string, assume it is a int
             try:
-                out = SBL.int_to_ba(hexstr_or_int)
+                out = SBL.int_to_ba(hexstr_or_int,width)
             except:
                 # seems arg is not an int, assume it is a list
                 try:
@@ -69,37 +69,56 @@ class SBL(object):
         return out
 
     @staticmethod
-    def sbl_cmd(ser,apdu,waitack=True,waitstatus=True):
+    def sbl_cmd(ser,apdu,waitack=True,waitstatus=True,verbose=False):
         if apdu is not bytes:
             apdu = SBL.ba(apdu)
         out = bytearray()
-        ser.write(apdu[0:5])
+        header=apdu[0:5]
+        ser.write(header)
+        if verbose:
+            print(">>>",SBL.hexstr(header),flush=True)
         if waitack:
             #print("wait ack")
             ack=ser.read()
-            #print(hexstr(ack))
+            if verbose:
+                print("  <",SBL.hexstr(ack),flush=True)
+            expected_ack=SBL.ba(apdu[1])
+            if ack!=expected_ack:
+                print("ERROR ACK=",SBL.hexstr(ack), "expected ACK=",SBL.hexstr(expected_ack))
+                ser.timeout = 0.1
+                sw2=ser.read()
+                ser.timeout = None
+                print("SW2=",SBL.hexstr(sw2))
+                raise ValueError()
             if len(apdu)>5:
-                ser.write(apdu[5:])
+                data=apdu[5:]
+                ser.write(data)
+                if verbose:
+                    print(" >>",SBL.hexstr(data),flush=True)
             elif apdu[4]>0:
                 out += ser.read(apdu[4])
+                if verbose:
+                    print(" <<",SBL.hexstr(out),flush=True)
             if waitstatus:
                 status = ser.read(2)
+                if verbose:
+                    print("  <",SBL.hexstr(status),flush=True)
                 if status!=bytes(SBL.ba("90 00")):
                     print("ser.timeout=",ser.timeout)
                     print(SBL.hexstr(ack))
                     print(SBL.hexstr(out))
                     print(SBL.hexstr(status))
                     raise ValueError()
+        
         return out
 
     @staticmethod
-    def sbl_set_base(ser,base):
-        cmd=SBL.ba("00 0B 00 00 04") + SBL.ba(base)
-        print(SBL.hexstr(cmd))
-        SBL.sbl_cmd(ser,cmd)
+    def sbl_set_base(ser,base,verbose=False):
+        cmd=SBL.ba("00 0B 00 00 04") + SBL.ba(base,4)
+        SBL.sbl_cmd(ser,cmd,verbose=verbose)
 
     @staticmethod
-    def sbl_exec(ser,offset,data=None,rxsize=0,waitack=True,waitstatus=True):
+    def sbl_exec(ser,offset,data=None,rxsize=0,waitack=True,waitstatus=True,verbose=False):
         cmd=SBL.ba("00 0E") + SBL.int_to_ba(offset, width=2)
         if data is not None:
             assert(len(data)<=255)
@@ -112,26 +131,25 @@ class SBL(object):
             cmd+=SBL.ba(rxsize)
         if len(cmd)<5:
             cmd+=SBL.ba("00")
-        print(SBL.hexstr(cmd))
-        return SBL.sbl_cmd(ser,cmd,waitack,waitstatus)
+        return SBL.sbl_cmd(ser,cmd,waitack,waitstatus,verbose=verbose)
 
     @staticmethod
-    def sbl_read(ser,size=1,offset=0,access_width=8,loop_size=252):
+    def sbl_read(ser,size=1,offset=0,access_width=8,loop_size=252,verbose=False):
         assert(access_width in [8,16,32])
         assert(loop_size<=255)
         assert(0==(loop_size%(access_width//8)))
         loops = size // loop_size
         out=bytearray()
         for i in range(0,loops):
-            out+=SBL.sbl_cmd(ser,SBL.ba(access_width) +SBL.ba("0A") + SBL.int_to_ba(offset, width=2)+ SBL.ba(loop_size))
+            out+=SBL.sbl_cmd(ser,SBL.ba(access_width) +SBL.ba("0A") + SBL.int_to_ba(offset, width=2)+ SBL.ba(loop_size),verbose=verbose)
             offset+=loop_size
             size-=loop_size
         if size>0:
-            out+=SBL.sbl_cmd(ser,SBL.ba(access_width) +SBL.ba("0A") + SBL.int_to_ba(offset, width=2)+ SBL.ba(size))
+            out+=SBL.sbl_cmd(ser,SBL.ba(access_width) +SBL.ba("0A") + SBL.int_to_ba(offset, width=2)+ SBL.ba(size),verbose=verbose)
         return out
 
     @staticmethod
-    def sbl_write(ser,data,offset=0,access_width=8,loop_size=252):
+    def sbl_write(ser,data,offset=0,access_width=8,loop_size=252,verbose=False):
         assert(access_width in [8,16,32])
         assert(loop_size<=255)
         assert(0==(loop_size%(access_width//8)))
@@ -139,12 +157,12 @@ class SBL(object):
         loops = size // loop_size
         datoffset=0
         for i in range(0,loops):
-            SBL.sbl_cmd(ser,SBL.ba(access_width) +SBL.ba("0C") + SBL.int_to_ba(offset, width=2)+ SBL.ba(loop_size) + data[datoffset:datoffset+loop_size])
+            SBL.sbl_cmd(ser,SBL.ba(access_width) +SBL.ba("0C") + SBL.int_to_ba(offset, width=2)+ SBL.ba(loop_size) + data[datoffset:datoffset+loop_size],verbose=verbose)
             offset+=loop_size
             datoffset+=loop_size
             size-=loop_size
         if size>0:
-            SBL.sbl_cmd(ser,SBL.ba(access_width) +SBL.ba("0C") + SBL.int_to_ba(offset, width=2)+ SBL.ba(size)+ data[datoffset:])
+            SBL.sbl_cmd(ser,SBL.ba(access_width) +SBL.ba("0C") + SBL.int_to_ba(offset, width=2)+ SBL.ba(size)+ data[datoffset:],verbose=verbose)
 
     @staticmethod
     def sbl_sync(ser):
@@ -160,9 +178,10 @@ class SBL(object):
                 status += tmp
             #print(SBL.hexstr(status), flush=True)
 
-    def __init__(self,ser):
+    def __init__(self,ser,verbose=False):
         self.ser=ser
         self.base=None
+        self.verbose=verbose
         SBL.sbl_sync(ser)
 
     def _set_base(self,address):
@@ -170,17 +189,19 @@ class SBL(object):
         base=address - offset
         assert(base<=0xFFFF0000)
         if self.base != base:
-            self.sbl_set_base(self.ser,base)
+            self.sbl_set_base(self.ser,base,verbose=self.verbose)
             self.base=base
         return offset
 
     def read(self,size=1,address=0,access_width=8,loop_size=252):
         offset=self._set_base(address)
-        return self.sbl_read(self.ser,size,offset,access_width,loop_size)
+        return self.sbl_read(self.ser,size,offset,access_width,loop_size,verbose=self.verbose)
 
     def write(self,data,address=0,access_width=8,loop_size=252):
         offset=self._set_base(address)
-        return self.sbl_write(self.ser,data,offset,access_width,loop_size)
+        if data is not bytes:
+            data=SBL.ba(data)
+        return self.sbl_write(self.ser,data,offset,access_width,loop_size,verbose=self.verbose)
 
     def fill(self,val,size=1,address=0,access_width=8,loop_size=252):
         offset=self._set_base(address)
@@ -188,7 +209,7 @@ class SBL(object):
         vallen=len(valbytes)
         n=size // vallen
         dat = valbytes * n
-        self.sbl_write(self.ser,dat[:size],offset,access_width,loop_size)
+        self.sbl_write(self.ser,dat[:size],offset,access_width,loop_size,verbose=self.verbose)
 
     def load_ihex(self,ihex,offset=0,access_width=8,loop_size=252):
         all_sections = ihex.segments()
