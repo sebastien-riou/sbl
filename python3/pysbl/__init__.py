@@ -165,6 +165,26 @@ class SBL(object):
             SBL.sbl_cmd(ser,SBL.ba(access_width) +SBL.ba("0C") + SBL.int_to_ba(offset, width=2)+ SBL.ba(size)+ data[datoffset:],verbose=verbose)
 
     @staticmethod
+    def format_mem_dump(base,dat,unit=1,upl=16,fill='0',byteorder='little'):
+        r=len(dat)
+        j=0
+        out=""
+        width=unit*2
+        while r>0:
+            out += "%08x: "%(base+j*unit*upl)
+            for i in range(0,upl):
+                offset=j*upl+i*unit
+                u = dat[offset:offset+unit] 
+                val = int.from_bytes(u,byteorder=byteorder)
+                out += f'{val:{fill}{width}x} '
+                r-=1
+                if 0==r:
+                    break
+            out += '\n'
+            j+=1
+        return out
+
+    @staticmethod
     def sbl_sync(ser):
         ser.reset_input_buffer()
         status=SBL.ba("00 00")
@@ -237,6 +257,43 @@ class SBL(object):
     def exec(self,address,data=None,rxsize=0,waitack=True,waitstatus=True):
         offset=self._set_base(address)
         return self.sbl_exec(self.ser,offset,data,rxsize,waitack=waitack,waitstatus=waitstatus)
+        
+    def write_int(self,data,addr,size=4,access_width=32):
+        return self.write(data=data.to_bytes(size,byteorder='little'),address=addr,access_width=access_width)
+
+    def write_int16(self,data,addr):
+        return self.write_int(data,addr=addr,size=2,access_width=16)
+
+    def write_int32(self,data,addr):
+        return self.write_int(data,addr=addr,size=4,access_width=32)
+
+    def read_int(self,addr,size=4,access_width=32):
+        b=self.read(size=size,address=addr,access_width=access_width)
+        return int.from_bytes(b,byteorder='little')
+
+    def read_int16(self,addr):
+        return self.read_int(addr,size=2,access_width=16)
+        
+    def read_int32(self,addr):
+        return self.read_int(addr,size=4,access_width=32)
+
+    def dump_int16(self,addr):
+        val=self.read_int16(addr)
+        print("int@0x%x = 0x%08x"%(addr,val))
+        return val
+
+    def dump_int32(self,addr):
+        val=self.read_int32(addr)
+        print("int@0x%x = 0x%08x"%(addr,val))
+        return val
+    
+    def dump_mem(self,addr=0,size=16,access_width=8,loop_size=252,unit=1,upl=16,fill='0',byteorder='little'):
+        dat=self.read(size=size,address=addr,access_width=access_width,loop_size=loop_size)
+        s=self.format_mem_dump(base=addr,dat=dat,unit=unit,upl=upl,fill=fill,byteorder=byteorder)
+        print(s)
+        return dat
+        
+
 
 def sbl_demo_main():
     args_min=2
