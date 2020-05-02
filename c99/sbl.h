@@ -183,6 +183,7 @@ static void sbl_main(void){
 			sbl_exec(addr);
 			break;
 		case SBL_CMD_EXIT:
+			sbl_tx8(cmd>>8);//send ISO7816 ACK
 			break;
 		default:
 			status = SBL_KO;
