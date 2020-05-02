@@ -118,6 +118,11 @@ class SBL(object):
         SBL.sbl_cmd(ser,cmd,verbose=verbose)
 
     @staticmethod
+    def sbl_exit(ser):
+        cmd=SBL.ba("00 EE 00 00 00")
+        SBL.sbl_cmd(ser,cmd)
+
+    @staticmethod
     def sbl_exec(ser,offset,data=None,rxsize=0,waitack=True,waitstatus=True,verbose=False):
         cmd=SBL.ba("00 0E") + SBL.int_to_ba(offset, width=2)
         if data is not None:
@@ -257,6 +262,9 @@ class SBL(object):
     def exec(self,address,data=None,rxsize=0,waitack=True,waitstatus=True):
         offset=self._set_base(address)
         return self.sbl_exec(self.ser,offset,data,rxsize,waitack=waitack,waitstatus=waitstatus)
+        
+    def exit(self):
+        return self.sbl_exit(self.ser)
         
     def write_int(self,data,addr,size=4,access_width=32):
         return self.write(data=data.to_bytes(size,byteorder='little'),address=addr,access_width=access_width)

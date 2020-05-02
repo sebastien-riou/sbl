@@ -62,6 +62,7 @@ static void sbl_tx(void*dat, unsigned int len){
 #define SBL_CMD_INS_WRITE   0x0C
 #define SBL_CMD_INS_BASE    0x0B
 #define SBL_CMD_INS_EXEC    0x0E
+#define SBL_CMD_INS_EXIT    0xEE
 
 #define SBL_CMD_READ_8		(SBL_CMD_CLA_8  | (SBL_CMD_INS_READ<<8))
 #define SBL_CMD_READ_16		(SBL_CMD_CLA_16 | (SBL_CMD_INS_READ<<8))
@@ -73,6 +74,7 @@ static void sbl_tx(void*dat, unsigned int len){
 
 #define SBL_CMD_BASE (SBL_CMD_INS_BASE<<8)
 #define SBL_CMD_EXEC (SBL_CMD_INS_EXEC<<8)
+#define SBL_CMD_EXIT (SBL_CMD_INS_EXIT<<8)
 
 #define SBL_OK 0x0090
 #define SBL_KO 0x0064
@@ -88,13 +90,14 @@ static unsigned int compute_len(unsigned int len,unsigned int access_unit){
 static void sbl_main(void){
 	uint32_t base=0;
 	uint32_t addr;
-	uint16_t cmd;
+	uint16_t cmd=0;
 	uint16_t offset;
 	uint8_t len;
 	uint16_t status;
 	unsigned int access_unit;
 
-	while(1){
+
+	while(SBL_CMD_EXIT!=cmd){
 		//5 bytes header
 		sbl_rx(&cmd,2);
 		sbl_rx(&offset,2);
@@ -178,6 +181,8 @@ static void sbl_main(void){
 			break;
 		case SBL_CMD_EXEC:
 			sbl_exec(addr);
+			break;
+		case SBL_CMD_EXIT:
 			break;
 		default:
 			status = SBL_KO;
