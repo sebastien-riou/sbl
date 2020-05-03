@@ -178,11 +178,11 @@ class SBL(object):
         while r>0:
             out += "%08x: "%(base+j*unit*upl)
             for i in range(0,upl):
-                offset=j*upl+i*unit
+                offset=(j*upl+i)*unit
                 u = dat[offset:offset+unit] 
                 val = int.from_bytes(u,byteorder=byteorder)
                 out += f'{val:{fill}{width}x} '
-                r-=1
+                r-=unit
                 if 0==r:
                     break
             out += '\n'
