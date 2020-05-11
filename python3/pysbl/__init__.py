@@ -295,10 +295,12 @@ class SBL(object):
         print("int@0x%x = 0x%08x"%(addr,val))
         return val
     
-    def dump_mem(self,addr=0,size=16,access_width=8,loop_size=252,unit=1,upl=16,fill='0',byteorder='little'):
+    def dump_mem(self,addr=0,size=16,access_width=8,loop_size=252,unit=1,upl=16,fill='0',byteorder='little',file=sys.stdout):
         dat=self.read(size=size,address=addr,access_width=access_width,loop_size=loop_size)
         s=self.format_mem_dump(base=addr,dat=dat,unit=unit,upl=upl,fill=fill,byteorder=byteorder)
-        print(s)
+        if file is None:
+            return s
+        print(s,file=file)
         return dat
         
 
