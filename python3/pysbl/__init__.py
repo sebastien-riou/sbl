@@ -172,6 +172,7 @@ class SBL(object):
     @staticmethod
     def format_mem_dump(base,dat,unit=1,upl=16,fill='0',byteorder='little'):
         r=len(dat)
+        assert(0 == r % unit)
         j=0
         out=""
         width=unit*2
