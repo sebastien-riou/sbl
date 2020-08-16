@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name="pysbl",
-    version="0.3.2",
+    version="0.3.3",
     author="Sebastien Riou",
     author_email="matic@nimp.co.uk",
     description="Library for controlling embedded devices using SBL",

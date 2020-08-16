@@ -176,11 +176,20 @@ class SBL(object):
         j=0
         out=""
         width=unit*2
+        offset=0
         while r>0:
+            if 0 == j:
+                # first line
+                line_unit_offset = (base // unit) % upl
+                base -= line_unit_offset * unit
+            else:
+                line_unit_offset = 0
             out += "%08x: "%(base+j*unit*upl)
-            for i in range(0,upl):
-                offset=(j*upl+i)*unit
+            for i in range(0,line_unit_offset):
+                out += ' '*width + ' '
+            for i in range(line_unit_offset,upl):
                 u = dat[offset:offset+unit] 
+                offset+=unit
                 val = int.from_bytes(u,byteorder=byteorder)
                 out += f'{val:{fill}{width}x} '
                 r-=unit
